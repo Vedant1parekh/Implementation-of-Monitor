@@ -1,0 +1,175 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<pthread.h>
+#include<semaphore.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#define gettid() syscall(SYS_gettid)
+#include <thread>
+#include <chrono>
+#include <iostream>
+using namespace std;
+
+pthread_t tid1,tid2;
+
+sem_t mutex,full,empty;
+char item = 'X', item1;
+int itemDesire ;
+char *buf;
+int numOfProducer, numOfConsumer, buffersize;
+static int i = 0;
+
+
+void *produce(void *arg)
+
+  {
+
+        while ( 1  ){
+                  
+         
+          sem_wait(&empty);
+          sem_wait(&mutex);
+
+
+        if ( 0 < itemDesire){
+       
+
+          buf[i] = 'X';
+          fflush(stdout);
+           cout<<"p:<"<<tid1<<">, item: "<<item<<", at "<<i<<"\n";
+           i++;
+           itemDesire--;
+         
+
+    
+          
+        }
+          
+       
+        else {
+               
+               sem_post(&mutex);
+              sem_post(&full);
+
+            
+              return 0;
+           }
+        
+           sem_post(&mutex);
+            sem_post(&full);
+
+
+              }
+   
+}
+
+
+void *consume(void *arg)
+{
+
+
+      while( 1 ){
+                
+              sem_wait(&full);
+                
+              sem_wait(&mutex);
+
+
+                 if (  0 < i ){
+                      
+
+                      item1 = buf[--i];  
+                      fflush(stdout);               
+                      cout<<"c:<"<<tid2<<">, item: "<<item1<<", at "<<i<<"\n";
+                    
+              }
+    
+                 else  {
+
+                  sem_post(&mutex);
+                  sem_post(&empty);
+                
+                  exit(0) ;
+                 }
+                
+                 
+                  sem_post(&mutex);
+                sem_post(&empty);
+   
+              }
+
+}
+
+
+int main(int argc, char *argv[])
+{
+
+ 
+  
+   if( argc != 9 )
+  {
+
+    printf("not enough command \n");
+    return -1;
+  }
+
+  else {
+
+
+     if (  strcmp(argv[1], "-b") || strcmp(argv[3], "-p") || strcmp(argv[5], "-c") || strcmp(argv[7], "-i")){
+          
+          printf("wrong switch \n");
+           return -1;
+
+    }
+
+    
+    buffersize = atoi(argv[2]);
+    numOfProducer = atoi(argv[4]);
+    numOfConsumer = atoi(argv[6]);
+    itemDesire = atoi(argv[8]);
+
+
+  }
+
+
+
+ buf=(char *)malloc(sizeof(char )*buffersize);
+
+ 
+    sem_init(&mutex,0,1);
+
+    sem_init(&full,0,0);
+
+    sem_init(&empty,0,buffersize);
+
+
+    for(int i=0;i < numOfProducer;i++){
+
+    pthread_create(&tid1,NULL,produce,NULL);
+
+  }
+  for(int i=0;i < numOfConsumer;i++){
+
+
+    pthread_create(&tid2,NULL,consume,NULL);
+
+
+  }
+
+
+  for(int i=0;i < numOfProducer;i++){
+
+    pthread_join(tid1,NULL);
+
+  }
+
+
+  for(int i=0;i < numOfConsumer;i++){
+
+    pthread_join(tid2,NULL);
+
+  }
+
+}
